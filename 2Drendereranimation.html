@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Animated Pixel Colors</title>
+<style>
+  body { font-family: Arial, sans-serif; }
+  canvas { border: 1px solid black; display: block; margin-top: 10px; }
+  #controls { margin-top: 20px; }
+</style>
+</head>
+<body>
+<h1>Animate Pixel Colors with a Function</h1>
+<div id="controls">
+  <textarea id="colorFunction" rows="4" cols="50">function(x, y, CurrentFrame) { return {r: (x + CurrentFrame) % 256, g: (y + CurrentFrame) % 256, b: (x + y + CurrentFrame) % 256}; }</textarea>
+  <br>
+  <button onclick="startAnimation()">Start Animation</button>
+  <button onclick="stopAnimation()">Stop Animation</button>
+  <button onclick="resetCurrentFrame()">Reset CurrentFrame</button>
+  <br>
+  <label for="currentFrameInput">Set CurrentFrame: </label>
+  <input type="number" id="currentFrameInput" value="0" oninput="setCurrentFrame()">
+  <br>
+  <label for="fpsInput">Set FPS: </label>
+  <input type="number" id="fpsInput" value="30" oninput="updateFPS()">
+  <br>
+  <label for="status">Status: </label>
+  <textarea id="status" rows="2" cols="50" readonly></textarea>
+</div>
+<canvas id="canvas" width="500" height="500"></canvas>
+
+<script>
+let animationFrameId;
+let CurrentFrame = 0;
+let fps = 30;
+let lastFrameTime = 0;
+
+function startAnimation() {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+  }
+  lastFrameTime = performance.now();
+  animate();
+}
+
+function stopAnimation() {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+  }
+}
+
+function resetCurrentFrame() {
+  CurrentFrame = 0;
+  document.getElementById('currentFrameInput').value = 0;
+  applyFunction();
+}
+
+function setCurrentFrame() {
+  const input = document.getElementById('currentFrameInput');
+  CurrentFrame = parseInt(input.value, 10);
+  applyFunction();
+}
+
+function updateFPS() {
+  const input = document.getElementById('fpsInput');
+  fps = parseInt(input.value, 10);
+}
+
+function animate(now) {
+  const elapsed = now - lastFrameTime;
+  if (elapsed > 1000 / fps) {
+    applyFunction();
+    CurrentFrame++;
+    document.getElementById('currentFrameInput').value = CurrentFrame;
+    lastFrameTime = now;
+  }
+  animationFrameId = requestAnimationFrame(animate);
+}
+
+function applyFunction() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const colorFunctionText = document.getElementById('colorFunction').value;
+  const status = document.getElementById('status');
+  
+  let colorFunction;
+  try {
+    // Use the Function constructor to create a new function from the text
+    colorFunction = new Function('x', 'y', 'CurrentFrame', `return (${colorFunctionText})(x, y, CurrentFrame);`);
+    status.value = "Function applied successfully.";
+  } catch (e) {
+    status.value = 'Error in function definition: ' + e.message;
+    return;
+  }
+  
+  const width = canvas.width;
+  const height = canvas.height;
+  const imageData = ctx.createImageData(width, height);
+  const data = imageData.data;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let color;
+      try {
+        color = colorFunction(x, y, CurrentFrame);
+      } catch (e) {
+        status.value = 'Error during function execution: ' + e.message;
+        return;
+      }
+      const index = (y * width + x) * 4;
+      data[index] = color.r;     // Red
+      data[index + 1] = color.g; // Green
+      data[index + 2] = color.b; // Blue
+      data[index + 3] = 255;     // Alpha
+    }
+  }
+  
+  ctx.putImageData(imageData, 0, 0);
+}
+
+// Initial application of the default function
+applyFunction();
+</script>
+</body>
+</html>
